@@ -33,7 +33,7 @@
                         </div>
                         <div>
                             <p class="font-[600]">{{ stop.customer }}</p>
-                            <p class="text-sm text-gray-500">{{ stop.address_display }}</p>
+                            <p class="text-sm text-gray-500" v-html="stop.address_display"></p>
                         </div>
                     </div>
                     <div>
@@ -61,12 +61,10 @@ const routeResource = createResource({
         return { employee_id: employee.name }
     },
     onSuccess(data) {
-        console.log('RouteIT data received:', JSON.stringify(data))
         route.value = data
         loading.value = false
     },
-    onError(err) {
-        console.log('RouteIT error:', err)
+    onError() {
         loading.value = false
     },
 })
