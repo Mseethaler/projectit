@@ -45,7 +45,7 @@
     </div>
 </template>
 <script setup>
-import { ref, onMounted, inject } from 'vue'
+import { ref, inject, watch } from 'vue'
 import { createResource, Spinner } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import StatusBadge from './StatusBadge.vue'
@@ -69,9 +69,11 @@ const routeResource = createResource({
     },
 })
 
-onMounted(() => {
-    routeResource.fetch()
-})
+watch(() => employee.name, (name) => {
+    if (name) {
+        routeResource.fetch()
+    }
+}, { immediate: true })
 
 function openStop(stop) {
     router.push({
