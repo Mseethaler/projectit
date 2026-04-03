@@ -61,10 +61,12 @@ const routeResource = createResource({
         return { employee_id: employee.name }
     },
     onSuccess(data) {
+        console.log('RouteIT data received:', JSON.stringify(data))
         route.value = data
         loading.value = false
     },
-    onError() {
+    onError(err) {
+        console.log('RouteIT error:', err)
         loading.value = false
     },
 })
