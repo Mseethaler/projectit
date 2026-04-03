@@ -333,6 +333,11 @@ def route_checkin(employee_id, trip_name, stop_name, latitude, longitude):
     }).insert(ignore_permissions=True)
 
     # 2. Find or create today's Timesheet
+    activity_type = frappe.db.get_single_value(
+        "Work Time Settings", "regular_time_activity_type"
+    )
+    company = frappe.db.get_value("Employee", employee_id, "company")
+
     existing_timesheet = frappe.db.get_value(
         "Timesheet",
         {"employee": employee_id, "start_date": today, "docstatus": 0},
@@ -341,25 +346,27 @@ def route_checkin(employee_id, trip_name, stop_name, latitude, longitude):
 
     if existing_timesheet:
         timesheet = frappe.get_doc("Timesheet", existing_timesheet)
+        timesheet.append("time_logs", {
+            "from_time": now,
+            "activity_type": activity_type,
+            "description": f"Stop: {stop.get('customer', '')} | Trip: {trip_name}",
+            "custom_delivery_stop": stop_name,
+        })
+        timesheet.save(ignore_permissions=True)
     else:
         timesheet = frappe.get_doc({
             "doctype": "Timesheet",
             "employee": employee_id,
             "start_date": today,
+            "company": company,
+            "time_logs": [{
+                "from_time": now,
+                "activity_type": activity_type,
+                "description": f"Stop: {stop.get('customer', '')} | Trip: {trip_name}",
+                "custom_delivery_stop": stop_name,
+            }]
         })
         timesheet.insert(ignore_permissions=True)
-
-    activity_type = frappe.db.get_single_value(
-        "Work Time Settings", "regular_time_activity_type"
-    )
-
-    timesheet.append("time_logs", {
-        "from_time": now,
-        "activity_type": activity_type,
-        "description": f"Stop: {stop.get('customer', '')} | Trip: {trip_name}",
-        "custom_delivery_stop": stop_name,
-    })
-    timesheet.save(ignore_permissions=True)
 
     # 3. Update stop status
     update_stop_status(trip_name, stop_name, "In Progress")
