@@ -243,7 +243,6 @@ def get_todays_route(employee_id):
             "name",
             "idx",
             "customer",
-            "address_name",
             "customer_address",
             "delivery_note",
             "visited",
