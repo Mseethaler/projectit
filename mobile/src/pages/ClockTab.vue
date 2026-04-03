@@ -11,13 +11,13 @@
 
                 <div v-if="clockStatus.clocked_in" class="flex flex-col gap-2">
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-500">Clocked In</span>
+                        <span class="text-gray-500">First Clock In</span>
                         <span class="font-[600]">
                             {{ dayjs(clockStatus.checkin_time).format('hh:mm A') }}
                         </span>
                     </div>
                     <div v-if="clockStatus.clocked_out" class="flex justify-between text-sm">
-                        <span class="text-gray-500">Clocked Out</span>
+                        <span class="text-gray-500">Last Clock Out</span>
                         <span class="font-[600]">
                             {{ dayjs(clockStatus.checkout_time).format('hh:mm A') }}
                         </span>
@@ -32,8 +32,8 @@
                 </div>
             </div>
 
-            <!-- Start Day Button -->
-            <div v-if="!clockStatus.clocked_in">
+            <!-- Start Day Button — show if not currently clocked in -->
+            <div v-if="!clockStatus.currently_in">
                 <PrimaryButton
                     name="Start Day"
                     :loading="actionLoading"
@@ -41,28 +41,16 @@
                 ></PrimaryButton>
             </div>
 
-            <!-- End Day Button -->
-            <div v-else-if="clockStatus.clocked_in && !clockStatus.clocked_out">
+            <!-- End Day Button — show if currently clocked in -->
+            <div v-else>
                 <div class="pb-2 text-sm text-gray-500">
-                    {{ elapsedTime }} since clock-in
+                    {{ elapsedTime }} since last clock-in
                 </div>
                 <PrimaryButton
                     name="End Day"
                     :loading="actionLoading"
                     @click="endDay"
                 ></PrimaryButton>
-            </div>
-
-            <!-- Day Complete -->
-            <div
-                v-else
-                class="pt-3 pb-4 border-2 border-green-300 text-center rounded-lg bg-green-50 font-[600] text-green-700"
-            >
-                ✓ Day Complete
-                <div class="text-sm font-[400] text-gray-500 pt-1">
-                    {{ dayjs(clockStatus.checkin_time).format('hh:mm A') }} —
-                    {{ dayjs(clockStatus.checkout_time).format('hh:mm A') }}
-                </div>
             </div>
 
         </div>
@@ -76,7 +64,7 @@
     </div>
 </template>
 <script setup>
-import { ref, onMounted, computed, inject } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { createResource, Spinner, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
@@ -92,6 +80,7 @@ const showError = ref(false)
 const errorMessage = ref('')
 const clockStatus = ref({
     clocked_in: false,
+    currently_in: false,
     clocked_out: false,
     checkin_time: null,
     checkout_time: null,
@@ -119,9 +108,9 @@ const statusResource = createResource({
     },
 })
 
-onMounted(() => {
-    statusResource.fetch()
-})
+watch(() => employee.name, (name) => {
+    if (name) statusResource.fetch()
+}, { immediate: true })
 
 function getLocation(callback) {
     if ('geolocation' in navigator) {
@@ -141,22 +130,13 @@ function getLocation(callback) {
 const startDayResource = createResource({
     url: 'projectit.api.start_day',
     onSuccess(data) {
-        if (data.status === 'already_clocked_in') {
-            toast({
-                title: 'Already clocked in',
-                text: 'You started your day earlier.',
-                icon: 'info',
-                position: 'bottom-center',
-            })
-        } else {
-            toast({
-                title: 'Day Started',
-                text: `Clocked in at ${dayjs(data.time).format('hh:mm A')}`,
-                icon: 'check-circle',
-                position: 'bottom-center',
-                iconClasses: 'text-blue-500',
-            })
-        }
+        toast({
+            title: 'Clocked In',
+            text: `Started at ${dayjs(data.time).format('hh:mm A')}`,
+            icon: 'check-circle',
+            position: 'bottom-center',
+            iconClasses: 'text-blue-500',
+        })
         actionLoading.value = false
         statusResource.fetch()
     },
@@ -171,8 +151,8 @@ const endDayResource = createResource({
     url: 'projectit.api.end_day',
     onSuccess(data) {
         toast({
-            title: 'Day Ended',
-            text: `Clocked out at ${dayjs(data.time).format('hh:mm A')}`,
+            title: 'Clocked Out',
+            text: `Ended at ${dayjs(data.time).format('hh:mm A')}`,
             icon: 'check-circle',
             position: 'bottom-center',
             iconClasses: 'text-blue-500',

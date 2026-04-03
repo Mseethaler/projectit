@@ -476,24 +476,11 @@ def send_route_sms(stop_name, contact_name, template_type):
 @frappe.whitelist()
 def start_day(employee_id, latitude, longitude):
     """
-    Creates an Employee Checkin IN for the start of the work day.
-    Guards against double clock-in.
+    Creates an Employee Checkin IN for the work day.
+    Allows multiple check-ins per day — no guard against double clock-in.
+    ERPNext Auto Attendance uses first IN and last OUT automatically.
     """
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    today = date.today().strftime("%Y-%m-%d")
-
-    existing = frappe.db.get_value(
-        "Employee Checkin",
-        {
-            "employee": employee_id,
-            "log_type": "IN",
-            "time": ["between", [f"{today} 00:00:00", f"{today} 23:59:59"]],
-            "custom_delivery_stop": ["is", "not set"],
-        },
-        "name",
-    )
-    if existing:
-        return {"status": "already_clocked_in", "checkin": existing}
 
     checkin = frappe.get_doc({
         "doctype": "Employee Checkin",
@@ -511,7 +498,7 @@ def start_day(employee_id, latitude, longitude):
 @frappe.whitelist()
 def end_day(employee_id, latitude, longitude):
     """
-    Creates an Employee Checkin OUT for the end of the work day.
+    Creates an Employee Checkin OUT for the work day.
     """
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -532,9 +519,12 @@ def end_day(employee_id, latitude, longitude):
 def get_clock_status(employee_id):
     """
     Returns today's clock status and total billed hours for the Clock tab.
+    Uses first IN and last OUT of the day.
+    currently_in is true if the last checkin action was IN.
     """
     today = date.today().strftime("%Y-%m-%d")
 
+    # First IN of the day
     checkin = frappe.db.get_value(
         "Employee Checkin",
         {
@@ -545,8 +535,10 @@ def get_clock_status(employee_id):
         },
         ["name", "time"],
         as_dict=True,
+        order_by="time asc",
     )
 
+    # Last OUT of the day
     checkout = frappe.db.get_value(
         "Employee Checkin",
         {
@@ -560,6 +552,19 @@ def get_clock_status(employee_id):
         order_by="time desc",
     )
 
+    # Most recent checkin to determine current state (IN or OUT)
+    last_checkin = frappe.db.get_value(
+        "Employee Checkin",
+        {
+            "employee": employee_id,
+            "time": ["between", [f"{today} 00:00:00", f"{today} 23:59:59"]],
+            "custom_delivery_stop": ["is", "not set"],
+        },
+        ["name", "time", "log_type"],
+        as_dict=True,
+        order_by="time desc",
+    )
+
     timesheet = frappe.db.get_value(
         "Timesheet",
         {"employee": employee_id, "start_date": today, "docstatus": ["!=", 2]},
@@ -567,8 +572,11 @@ def get_clock_status(employee_id):
         as_dict=True,
     )
 
+    currently_in = last_checkin and last_checkin.log_type == "IN"
+
     return {
         "clocked_in": bool(checkin),
+        "currently_in": currently_in,
         "clocked_out": bool(checkout),
         "checkin_time": checkin.time if checkin else None,
         "checkout_time": checkout.time if checkout else None,
