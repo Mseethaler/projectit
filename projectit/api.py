@@ -296,6 +296,7 @@ def update_stop_status(trip_name, stop_name, status):
                 stop.visited = 1
             break
 
+    trip.flags.ignore_validate_update_after_submit = True
     trip.save(ignore_permissions=True)
     frappe.db.commit()
     return {"status": "ok", "updated_status": status}
