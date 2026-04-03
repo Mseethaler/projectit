@@ -10,24 +10,34 @@ const routes = [
     component: () => import('@/pages/Home.vue'),
   },
   {
-    path : '/workit',
-    name : 'WorkIT',
-    component : () => import('@/pages/WorkIT.vue'),
+    path: '/workit',
+    name: 'WorkIT',
+    component: () => import('@/pages/WorkIT.vue'),
   },
   {
-    path : '/manageit',
-    name : 'ManageIT',
-    component : () => import('@/pages/ManageIT.vue'),
+    path: '/manageit',
+    name: 'ManageIT',
+    component: () => import('@/pages/ManageIT.vue'),
   },
   {
-    path : '/manageit/edit-instructions/:project_name',
-    name : 'EditInstructions',
-    component : () => import('@/pages/EditInstructions.vue'),
+    path: '/manageit/edit-instructions/:project_name',
+    name: 'EditInstructions',
+    component: () => import('@/pages/EditInstructions.vue'),
   },
   {
-    path : '/manageit/allocate-employees/:project_name',
-    name : 'AllocateEmployees',
-    component : () => import('@/pages/AllocateEmployees.vue'),
+    path: '/manageit/allocate-employees/:project_name',
+    name: 'AllocateEmployees',
+    component: () => import('@/pages/AllocateEmployees.vue'),
+  },
+  {
+    path: '/routeit',
+    name: 'RouteIT',
+    component: () => import('@/pages/RouteIT.vue'),
+  },
+  {
+    path: '/routeit/stop/:trip_name/:stop_name',
+    name: 'StopDetail',
+    component: () => import('@/pages/StopDetail.vue'),
   },
   {
     name: 'Login',
@@ -48,40 +58,37 @@ router.beforeEach(async (to, from, next) => {
   } catch (error) {
     isLoggedIn = false
   }
+
   if (to.name === 'Login' && isLoggedIn) {
-    next({ name: "Home" })
+    next({ name: 'Home' })
   } else if (to.name !== 'Login' && !isLoggedIn) {
     next({ name: 'Login' })
-  } 
-  else if(to.name === 'Login' && !isLoggedIn){
+  } else if (to.name === 'Login' && !isLoggedIn) {
     next()
-  }
-  else {
+  } else {
     const mobileModules = createResource({
-      type: "POST",
-      url: "projectit.api.get_modules_for_router",
+      type: 'POST',
+      url: 'projectit.api.get_modules_for_router',
       makeParams() {
         return {
-          user_id: userResource.data
+          user_id: userResource.data,
         }
       },
       onSuccess(data) {
-        let allowed = false;
-        for (let d of data){
-          if(to.path.match(d)){
-            allowed =  true;
-            break;
+        let allowed = false
+        for (let d of data) {
+          if (to.path.match(d)) {
+            allowed = true
+            break
           }
         }
-        if(allowed === true){
-            next()
-        }
-        else{
-          next({name : "Home"})
+        if (allowed === true) {
+          next()
+        } else {
+          next({ name: 'Home' })
         }
       },
     })
-
     await mobileModules.fetch()
   }
 })
