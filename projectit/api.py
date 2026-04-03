@@ -307,8 +307,9 @@ def route_checkin(employee_id, trip_name, stop_name, latitude, longitude):
     """
     Called when tech taps Check In on a stop.
     1. Creates Employee Checkin IN record (HR)
-    2. Adds a time log to today's Timesheet
-    3. Updates stop status to In Progress
+    2. Adds a time log to today's Timesheet with GPS
+    3. Stores GPS on Delivery Stop
+    4. Updates stop status to In Progress
     """
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     today = date.today().strftime("%Y-%m-%d")
@@ -351,6 +352,8 @@ def route_checkin(employee_id, trip_name, stop_name, latitude, longitude):
             "activity_type": activity_type,
             "description": f"Stop: {stop.get('customer', '')} | Trip: {trip_name}",
             "custom_delivery_stop": stop_name,
+            "custom_checkin_lat": latitude,
+            "custom_checkin_lng": longitude,
         })
         timesheet.save(ignore_permissions=True)
     else:
@@ -364,11 +367,19 @@ def route_checkin(employee_id, trip_name, stop_name, latitude, longitude):
                 "activity_type": activity_type,
                 "description": f"Stop: {stop.get('customer', '')} | Trip: {trip_name}",
                 "custom_delivery_stop": stop_name,
+                "custom_checkin_lat": latitude,
+                "custom_checkin_lng": longitude,
             }]
         })
         timesheet.insert(ignore_permissions=True)
 
-    # 3. Update stop status
+    # 3. Store GPS on Delivery Stop
+    frappe.db.set_value("Delivery Stop", stop_name, {
+        "custom_checkin_lat": latitude,
+        "custom_checkin_lng": longitude,
+    }, update_modified=False)
+
+    # 4. Update stop status
     update_stop_status(trip_name, stop_name, "In Progress")
 
     frappe.db.commit()
@@ -381,8 +392,9 @@ def route_checkout(employee_id, trip_name, stop_name, latitude, longitude):
     Called when tech taps Check Out on a stop.
     1. Creates Employee Checkin OUT record (HR)
     2. Closes the open Timesheet time log for this stop
-    3. Updates stop status to Complete
-    4. Sends completion SMS
+    3. Stores GPS on Delivery Stop
+    4. Updates stop status to Complete
+    5. Sends completion SMS
     """
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     today = date.today().strftime("%Y-%m-%d")
@@ -420,10 +432,16 @@ def route_checkout(employee_id, trip_name, stop_name, latitude, longitude):
                 break
         timesheet.save(ignore_permissions=True)
 
-    # 3. Update stop status to Complete
+    # 3. Store GPS on Delivery Stop
+    frappe.db.set_value("Delivery Stop", stop_name, {
+        "custom_checkout_lat": latitude,
+        "custom_checkout_lng": longitude,
+    }, update_modified=False)
+
+    # 4. Update stop status to Complete
     update_stop_status(trip_name, stop_name, "Complete")
 
-    # 4. Send completion SMS
+    # 5. Send completion SMS
     stop_data = frappe.db.get_value(
         "Delivery Stop",
         stop_name,
