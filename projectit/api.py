@@ -243,6 +243,7 @@ def get_todays_route(employee_id):
             "name",
             "idx",
             "customer",
+            "address",
             "customer_address",
             "delivery_note",
             "visited",
@@ -251,8 +252,10 @@ def get_todays_route(employee_id):
             "custom_checkout_time",
             "estimated_arrival",
             "grand_total",
-            "contact_name",
+            "contact",
             "customer_contact",
+            "lat",
+            "lng",
         ],
         order_by="idx asc",
     )
@@ -260,8 +263,8 @@ def get_todays_route(employee_id):
     for stop in stops:
         stop["address_display"] = stop.get("customer_address") or ""
 
-        if stop.get("customer_contact"):
-            phone = frappe.db.get_value("Contact", stop["customer_contact"], "mobile_no")
+        if stop.get("contact"):
+            phone = frappe.db.get_value("Contact", stop["contact"], "mobile_no")
             stop["phone"] = phone or ""
         else:
             stop["phone"] = ""
@@ -416,11 +419,11 @@ def route_checkout(employee_id, trip_name, stop_name, latitude, longitude):
     stop_data = frappe.db.get_value(
         "Delivery Stop",
         stop_name,
-        ["customer", "customer_contact"],
+        ["customer", "contact"],
         as_dict=True,
     )
-    if stop_data and stop_data.get("customer_contact"):
-        send_route_sms(stop_name, stop_data["customer_contact"], "complete")
+    if stop_data and stop_data.get("contact"):
+        send_route_sms(stop_name, stop_data["contact"], "complete")
 
     frappe.db.commit()
     return {"status": "ok"}
