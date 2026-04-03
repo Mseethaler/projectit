@@ -8,9 +8,14 @@ from datetime import date, datetime
 
 @frappe.whitelist()
 def get_employee_id(user_id):
-    employee_id = frappe.get_list("Employee", filters={'user_id': user_id}, fields=["name"])
-    if employee_id:
-        return employee_id[0].name
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user_id},
+        ["name", "employee_name", "company"],
+        as_dict=True,
+    )
+    if employee:
+        return employee
 
 
 @frappe.whitelist()
@@ -138,7 +143,7 @@ def project_with_members(employee_id):
             "Mobile Module",
             parent_doctype="Employee",
             fields=["module_name"],
-            filters={"parent": employee_id},
+            filters={"parent": employee_id.name},
             pluck="module_name",
         )
 
@@ -179,7 +184,7 @@ def get_modules_for_router(user_id):
         "Mobile Module",
         parent_doctype="Employee",
         fields=["module_name"],
-        filters={"parent": employee_id},
+        filters={"parent": employee_id.name},
         pluck="module_name",
     )
     modules.append('home')
@@ -394,7 +399,7 @@ def route_checkout(employee_id, trip_name, stop_name, latitude, longitude):
     2. Closes the open Timesheet time log for this stop
     3. Stores GPS on Delivery Stop
     4. Updates stop status to Complete
-    5. Sends completion SMS
+    SMS is handled by the Vue app via send_route_sms after checkout.
     """
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     today = date.today().strftime("%Y-%m-%d")
@@ -441,42 +446,35 @@ def route_checkout(employee_id, trip_name, stop_name, latitude, longitude):
     # 4. Update stop status to Complete
     update_stop_status(trip_name, stop_name, "Complete")
 
-    # 5. Send completion SMS
-    stop_data = frappe.db.get_value(
-        "Delivery Stop",
-        stop_name,
-        ["customer", "contact"],
-        as_dict=True,
-    )
-    if stop_data and stop_data.get("contact"):
-        send_route_sms(stop_name, stop_data["contact"], "complete")
-
     frappe.db.commit()
     return {"status": "ok"}
 
 
 @frappe.whitelist()
-def send_route_sms(stop_name, contact_name, template_type):
+def send_route_sms(stop_name, contact_name, template_type, message=None):
     """
     Sends SMS via ERPNext SMS Center.
     template_type: "omw" | "complete"
+    message: if provided by the Vue app, uses this directly instead of template.
     """
     phone = frappe.db.get_value("Contact", contact_name, "mobile_no")
     if not phone:
         frappe.log_error(f"No phone for contact {contact_name}", "RouteIT SMS")
         return {"status": "no_phone"}
 
-    try:
-        settings = frappe.get_single("Field Service Settings")
-        if template_type == "omw":
-            message = getattr(settings, "omw_sms_template", None) or \
-                "Your technician is on the way. Thank you for your business!"
-        else:
-            message = getattr(settings, "complete_sms_template", None) or \
-                "Your service has been completed. Thank you for your business!"
-    except Exception:
-        message = "Your technician is on the way." if template_type == "omw" \
-            else "Your service has been completed."
+    # Use the message passed from the Vue app if provided
+    if not message:
+        try:
+            settings = frappe.get_single("Field Service Settings")
+            if template_type == "omw":
+                message = getattr(settings, "omw_sms_template", None) or \
+                    "Your technician is on the way. Thank you for your business!"
+            else:
+                message = getattr(settings, "complete_sms_template", None) or \
+                    "Your service has been completed. Thank you for your business!"
+        except Exception:
+            message = "Your technician is on the way." if template_type == "omw" \
+                else "Your service has been completed."
 
     try:
         from frappe.core.doctype.sms_settings.sms_settings import send_sms

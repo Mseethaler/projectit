@@ -14,17 +14,24 @@ import {
 } from 'frappe-ui'
 
 let employeeId = localStorage.getItem("employee_id")
-if(!employeeId){
+if (!employeeId) {
   const employeeIdJSON = JSON.stringify({
-    name : ''
+    name: '',
+    employee_name: '',
+    company: '',
   })
-  localStorage.setItem("employee_id",employeeIdJSON)
+  localStorage.setItem("employee_id", employeeIdJSON)
   employeeId = {
-    name : ''
+    name: '',
+    employee_name: '',
+    company: '',
   }
 } else {
   employeeId = JSON.parse(employeeId)
+  if (!employeeId.employee_name) employeeId.employee_name = ''
+  if (!employeeId.company) employeeId.company = ''
 }
+
 const employee = reactive(employeeId)
 
 let app = createApp(App)
@@ -38,7 +45,7 @@ app.component('Button', Button)
 app.component('Card', Card)
 app.component('Input', Input)
 
-app.provide("employee_id",employee)
+app.provide("employee_id", employee)
 
 app.mount('#app')
 

@@ -60,7 +60,7 @@
                     <PrimaryButton
                         name="On My Way"
                         :loading="actionLoading"
-                        @click="sendOMW"
+                        @click="openSmsPrompt('omw')"
                         class="w-full"
                     ></PrimaryButton>
                 </div>
@@ -102,6 +102,48 @@
             </div>
         </div>
 
+        <!-- SMS Prompt Modal -->
+        <div
+            v-if="showSmsPrompt"
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50"
+            @click.self="showSmsPrompt = false"
+        >
+            <div class="bg-white w-full rounded-t-2xl p-6 flex flex-col gap-4">
+                <div class="flex justify-between items-center">
+                    <p class="font-[700] text-[#4A6BB6] text-lg">Send Message</p>
+                    <button @click="showSmsPrompt = false" class="text-gray-400">
+                        <FeatherIcon name="x" class="h-5 w-5" />
+                    </button>
+                </div>
+                <div v-if="stop.phone" class="text-sm text-gray-500">
+                    To: {{ stop.customer }} ({{ stop.phone }})
+                </div>
+                <div v-else class="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                    No phone number on file. Status will update without sending SMS.
+                </div>
+                <textarea
+                    v-model="smsMessage"
+                    class="w-full border-2 border-[#B9C8EA] rounded-lg p-3 text-sm font-[Inter] resize-none"
+                    rows="4"
+                ></textarea>
+                <div class="flex gap-3">
+                    <button
+                        @click="skipSms"
+                        class="flex-1 border-2 border-[#B9C8EA] rounded-lg py-2 text-gray-500 font-[600]"
+                    >
+                        Skip
+                    </button>
+                    <button
+                        @click="sendSms"
+                        :disabled="smsLoading"
+                        class="flex-1 bg-[#4A6BB6] rounded-lg py-2 text-white font-[600] disabled:bg-gray-300"
+                    >
+                        {{ smsLoading ? 'Sending...' : 'Send' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Camera -->
         <Camera v-if="showCamera"></Camera>
 
@@ -139,6 +181,12 @@ const actionLoading = ref(false)
 const errorMessage = ref('')
 const showError = ref(false)
 
+// SMS prompt state
+const showSmsPrompt = ref(false)
+const smsMessage = ref('')
+const smsLoading = ref(false)
+const pendingSmsType = ref('') // 'omw' or 'complete'
+
 // Watch for photo capture
 watch(imageFile, () => {
     if (imageFile.value) {
@@ -165,7 +213,6 @@ onMounted(() => {
 })
 
 function openMaps() {
-    // Use raw customer_address stripped of HTML tags for the maps query
     const rawAddress = (stop.value.customer_address || stop.value.address || '')
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')
@@ -173,25 +220,69 @@ function openMaps() {
     window.open(`https://maps.google.com/?q=${encodeURIComponent(rawAddress)}`, '_blank')
 }
 
-// OMW
-const omwResource = createResource({
+function openSmsPrompt(type) {
+    pendingSmsType.value = type
+    const techName = employee.employee_name || 'Your technician'
+    const company = employee.company || ''
+    const customer = stop.value.customer || 'there'
+
+    if (type === 'omw') {
+        smsMessage.value = `Hi ${customer}, this is ${techName}${company ? ' from ' + company : ''}. I'm on my way to your location!`
+    } else {
+        smsMessage.value = `Hi ${customer}, your service has been completed. Thank you for choosing ${company || 'us'}!`
+    }
+    showSmsPrompt.value = true
+}
+
+function skipSms() {
+    showSmsPrompt.value = false
+    if (pendingSmsType.value === 'omw') {
+        updateStatus('OMW')
+    }
+    // checkout skip — status already updated by handleImageCapture
+}
+
+const smsResource = createResource({
     url: 'projectit.api.send_route_sms',
-    makeParams() {
-        return {
-            stop_name: stop_name,
-            contact_name: stop.value.contact,
-            template_type: 'omw',
+    onSuccess() {
+        smsLoading.value = false
+        showSmsPrompt.value = false
+        toast({
+            title: 'Message Sent',
+            icon: 'check-circle',
+            position: 'bottom-center',
+            iconClasses: 'text-blue-500',
+        })
+        if (pendingSmsType.value === 'omw') {
+            updateStatus('OMW')
         }
     },
-    onSuccess() {
-        updateStatus('OMW')
-    },
     onError(e) {
-        errorMessage.value = e
-        showError.value = true
-        actionLoading.value = false
+        smsLoading.value = false
+        showSmsPrompt.value = false
+        // Don't block flow on SMS failure — still update status
+        if (pendingSmsType.value === 'omw') {
+            updateStatus('OMW')
+        }
+        toast({
+            title: 'SMS Failed',
+            text: 'Status updated but message not sent.',
+            icon: 'alert-circle',
+            position: 'bottom-center',
+            iconClasses: 'text-yellow-500',
+        })
     },
 })
+
+function sendSms() {
+    smsLoading.value = true
+    smsResource.fetch({
+        stop_name: stop_name,
+        contact_name: stop.value.contact,
+        template_type: pendingSmsType.value,
+        message: smsMessage.value,
+    })
+}
 
 const updateStatusResource = createResource({
     url: 'projectit.api.update_stop_status',
@@ -222,15 +313,6 @@ const updateStatusResource = createResource({
 
 function updateStatus(status) {
     updateStatusResource.fetch({ status })
-}
-
-function sendOMW() {
-    actionLoading.value = true
-    if (stop.value.contact) {
-        omwResource.fetch()
-    } else {
-        updateStatus('OMW')
-    }
 }
 
 // Check In
@@ -269,6 +351,10 @@ const checkoutResource = createResource({
             position: 'bottom-center',
             iconClasses: 'text-blue-500',
         })
+        // Prompt completion SMS after checkout
+        if (stop.value.phone) {
+            openSmsPrompt('complete')
+        }
     },
     onError(e) {
         errorMessage.value = e
@@ -281,13 +367,11 @@ async function handleImageCapture(file) {
     uploading.value = true
     showCamera.value = false
 
-    // Upload photo first
     const fileAttachment = new FileAttachment(file)
     const docName = stop.value.delivery_note || trip_name
     const docType = stop.value.delivery_note ? 'Delivery Note' : 'Delivery Trip'
     await fileAttachment.upload(docType, docName, '')
 
-    // Get GPS
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
             (position) => {

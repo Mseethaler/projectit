@@ -60,7 +60,9 @@ const employeeResource = createResource({
     }
   },
   onSuccess(d) {
-    employee.name = d
+    employee.name = d.name
+    employee.employee_name = d.employee_name
+    employee.company = d.company
     mobileModules.update({
       filters: { name: employee.name },
     })
