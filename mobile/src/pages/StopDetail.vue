@@ -21,7 +21,7 @@
                 >
                     <div>
                         <p class="text-[#4A6BB6] font-[600]">{{ stop.customer }}</p>
-                        <p class="text-sm text-gray-600">{{ stop.address_display }}</p>
+                        <p class="text-sm text-gray-600" v-html="stop.address_display"></p>
                     </div>
                     <StatusBadge :status="stop.custom_status"></StatusBadge>
                 </div>
@@ -165,8 +165,12 @@ onMounted(() => {
 })
 
 function openMaps() {
-    const address = encodeURIComponent(stop.value.address_display)
-    window.open(`https://maps.google.com/?q=${address}`, '_blank')
+    // Use raw customer_address stripped of HTML tags for the maps query
+    const rawAddress = (stop.value.customer_address || stop.value.address || '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    window.open(`https://maps.google.com/?q=${encodeURIComponent(rawAddress)}`, '_blank')
 }
 
 // OMW
@@ -175,7 +179,7 @@ const omwResource = createResource({
     makeParams() {
         return {
             stop_name: stop_name,
-            contact_name: stop.value.customer_contact,
+            contact_name: stop.value.contact,
             template_type: 'omw',
         }
     },
@@ -222,10 +226,9 @@ function updateStatus(status) {
 
 function sendOMW() {
     actionLoading.value = true
-    if (stop.value.customer_contact) {
+    if (stop.value.contact) {
         omwResource.fetch()
     } else {
-        // No contact — just update status
         updateStatus('OMW')
     }
 }
