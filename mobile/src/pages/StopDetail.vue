@@ -5,12 +5,7 @@
         </div>
         <div v-else>
             <!-- Header -->
-            <div class="pt-4 pl-6 pr-6 flex items-center gap-3">
-                <img
-                    src="../images/fluent-mdl2_back.png"
-                    class="h-5 w-5 cursor-pointer"
-                    @click="router.back()"
-                />
+            <div class="pt-4 pl-6 pr-6 flex items-center">
                 <p class="text-[#4A6BB6] font-[700] text-lg">{{ stop.customer }}</p>
             </div>
 
@@ -168,7 +163,6 @@
 <script setup>
 import { ref, onMounted, inject, watch } from 'vue'
 import { createResource, Spinner, FeatherIcon, toast } from 'frappe-ui'
-import { useRouter, useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 import PrimaryButton from '../components/PrimaryButton.vue'
 import ErrorMessage from '../components/ErrorMessage.vue'
@@ -177,7 +171,6 @@ import StatusBadge from './StatusBadge.vue'
 import { showCamera, cameraMode, imageFile } from '../data/camera_context'
 import { FileAttachment } from '../composables'
 
-const router = useRouter()
 const route = useRoute()
 const employee = inject('employee_id')
 
