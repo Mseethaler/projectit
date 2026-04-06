@@ -26,6 +26,41 @@ def get_header_info():
 
 
 @frappe.whitelist()
+def upload_base64_file(content, filename, dt=None, dn=None, fieldname=None):
+    import base64
+    import io
+    from mimetypes import guess_type
+
+    from PIL import Image, ImageOps
+    from frappe.handler import ALLOWED_MIMETYPES
+
+    decoded_content = base64.b64decode(content)
+    content_type = guess_type(filename)[0]
+    if content_type not in ALLOWED_MIMETYPES:
+        frappe.throw(_("You can only upload JPG, PNG, PDF, TXT or Microsoft documents."))
+
+    if content_type.startswith("image/jpeg"):
+        with Image.open(io.BytesIO(decoded_content)) as image:
+            transpose_img = ImageOps.exif_transpose(image)
+            file_content = io.BytesIO()
+            transpose_img.save(file_content, format="JPEG")
+            file_content = file_content.getvalue()
+    else:
+        file_content = decoded_content
+
+    return frappe.get_doc({
+        "doctype": "File",
+        "attached_to_doctype": dt,
+        "attached_to_name": dn,
+        "attached_to_field": fieldname,
+        "folder": "Home",
+        "file_name": filename,
+        "content": file_content,
+        "is_private": 0,
+    }).insert()
+
+
+@frappe.whitelist()
 def get_modules_for_router(user_id):
     employee_id = get_employee_id(user_id)
     modules = frappe.get_list(
