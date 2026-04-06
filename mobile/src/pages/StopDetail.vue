@@ -49,6 +49,15 @@
                             dayjs(stop.estimated_arrival).format('hh:mm A')
                         }}</span>
                     </div>
+
+                    <!-- Special Instructions -->
+                    <div v-if="stop.special_instructions" class="text-sm border-t border-[#B9C8EA] pt-3 mt-1">
+                        <div class="flex items-center gap-1 text-[#4A6BB6] font-[600] mb-1">
+                            <FeatherIcon name="info" class="h-4 w-4" />
+                            <span>Special Instructions</span>
+                        </div>
+                        <p class="text-gray-700">{{ stop.special_instructions }}</p>
+                    </div>
                 </div>
             </div>
 

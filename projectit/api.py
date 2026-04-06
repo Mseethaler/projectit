@@ -291,6 +291,14 @@ def get_todays_route(employee_id, selected_date=None):
         if not stop.get("custom_status"):
             stop["custom_status"] = "Pending"
 
+        # Pull special instructions from Delivery Note
+        if stop.get("delivery_note"):
+            stop["special_instructions"] = frappe.db.get_value(
+                "Delivery Note", stop["delivery_note"], "custom_sales_order_instructions"
+            ) or ""
+        else:
+            stop["special_instructions"] = ""
+
     trip["stops"] = stops
     return trip
 
