@@ -10,19 +10,15 @@
                 <FeatherIcon name="chevron-left" class="h-5 w-5" />
             </button>
 
-            <div class="relative flex-1 mx-3">
-                <button
-                    @click="openDatePicker"
-                    class="w-full text-center font-[600] text-[#4A6BB6]"
-                >
+            <div class="relative flex-1 mx-3 text-center">
+                <span class="font-[600] text-[#4A6BB6] pointer-events-none">
                     {{ formattedDate }}
-                </button>
+                </span>
                 <input
-                    ref="dateInput"
                     type="date"
                     :value="selectedDate"
                     @change="onDateChange"
-                    class="absolute inset-0 opacity-0 w-full cursor-pointer"
+                    class="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                 />
             </div>
 
@@ -89,8 +85,6 @@ const router = useRouter()
 const employee = inject('employee_id')
 const route = ref(null)
 const loading = ref(true)
-const dateInput = ref(null)
-
 // Default to today
 const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
 
@@ -138,11 +132,6 @@ watch(selectedDate, () => {
 
 function changeDate(days) {
     selectedDate.value = dayjs(selectedDate.value).add(days, 'day').format('YYYY-MM-DD')
-}
-
-function openDatePicker() {
-    dateInput.value?.showPicker?.()
-    dateInput.value?.click()
 }
 
 function onDateChange(e) {
