@@ -1,5 +1,5 @@
 import frappe
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
 # ---------------------------------------------------------------------------
@@ -615,3 +615,57 @@ def get_clock_status(employee_id):
         "total_billed_hours": timesheet.total_hours if timesheet else 0,
         "timesheet": timesheet.name if timesheet else None,
     }
+
+
+@frappe.whitelist()
+def get_attendance_entries(employee_id, days=30):
+    """
+    Returns clock in/out history for the employee.
+    Groups by date, using first IN and last OUT per day.
+    Excludes stop-level checkins (custom_delivery_stop is set).
+    Returns last N days, most recent first.
+    """
+    from_date = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%d")
+
+    records = frappe.db.get_all(
+        "Employee Checkin",
+        filters={
+            "employee": employee_id,
+            "time": [">=", f"{from_date} 00:00:00"],
+            "custom_delivery_stop": ["in", ["", None]],
+        },
+        fields=["log_type", "time"],
+        order_by="time asc",
+    )
+
+    # Group by date
+    days_map = {}
+    for r in records:
+        day = str(r.time)[:10]
+        if day not in days_map:
+            days_map[day] = {"first_in": None, "last_out": None}
+        if r.log_type == "IN" and not days_map[day]["first_in"]:
+            days_map[day]["first_in"] = r.time
+        if r.log_type == "OUT":
+            days_map[day]["last_out"] = r.time
+
+    entries = []
+    for day, data in sorted(days_map.items(), reverse=True):
+        first_in = data["first_in"]
+        last_out = data["last_out"]
+
+        if first_in and last_out:
+            diff = datetime.strptime(str(last_out)[:19], "%Y-%m-%d %H:%M:%S") - \
+                   datetime.strptime(str(first_in)[:19], "%Y-%m-%d %H:%M:%S")
+            hours = round(diff.seconds / 3600, 1)
+        else:
+            hours = None
+
+        entries.append({
+            "date": day,
+            "clock_in": datetime.strptime(str(first_in)[:19], "%Y-%m-%d %H:%M:%S").strftime("%I:%M %p") if first_in else None,
+            "clock_out": datetime.strptime(str(last_out)[:19], "%Y-%m-%d %H:%M:%S").strftime("%I:%M %p") if last_out else None,
+            "hours": hours,
+        })
+
+    return entries

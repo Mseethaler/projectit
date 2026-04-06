@@ -10,7 +10,7 @@
             <ClockTab></ClockTab>
         </div>
         <div v-else>
-            <WorkITEntries></WorkITEntries>
+            <RouteEntries></RouteEntries>
         </div>
     </div>
 </template>
@@ -19,7 +19,7 @@ import { ref } from 'vue'
 import Tab from '../components/Tab.vue'
 import RouteList from './RouteList.vue'
 import ClockTab from './ClockTab.vue'
-import WorkITEntries from './WorkITEntries.vue'
+import RouteEntries from './RouteEntries.vue'
 import { moduleName } from '../data/module'
 
 const tabs = ['Route', 'Clock', 'Entries']
