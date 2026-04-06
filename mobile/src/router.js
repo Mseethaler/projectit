@@ -10,26 +10,6 @@ const routes = [
     component: () => import('@/pages/Home.vue'),
   },
   {
-    path: '/workit',
-    name: 'WorkIT',
-    component: () => import('@/pages/WorkIT.vue'),
-  },
-  {
-    path: '/manageit',
-    name: 'ManageIT',
-    component: () => import('@/pages/ManageIT.vue'),
-  },
-  {
-    path: '/manageit/edit-instructions/:project_name',
-    name: 'EditInstructions',
-    component: () => import('@/pages/EditInstructions.vue'),
-  },
-  {
-    path: '/manageit/allocate-employees/:project_name',
-    name: 'AllocateEmployees',
-    component: () => import('@/pages/AllocateEmployees.vue'),
-  },
-  {
     path: '/routeit',
     name: 'RouteIT',
     component: () => import('@/pages/RouteIT.vue'),

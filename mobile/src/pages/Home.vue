@@ -14,16 +14,6 @@
     <div v-if="!mobileModules.list.loading">
       <div class="pt-15 flex justify-evenly flex-wrap gap-3 px-6" v-if="mobileModules.data && employee.name">
         <ThemeButton
-          v-if="mobileModules.data.includes('WorkIT')"
-          name="WorkIT"
-          @click="router.push({ name: 'WorkIT' })"
-        />
-        <ThemeButton
-          v-if="mobileModules.data.includes('ManageIT')"
-          name="ManageIT"
-          @click="router.push({ name: 'ManageIT' })"
-        />
-        <ThemeButton
           v-if="mobileModules.data.includes('RouteIT')"
           name="RouteIT"
           @click="router.push({ name: 'RouteIT' })"
