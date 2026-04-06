@@ -6,11 +6,6 @@
         <div v-else>
             <!-- Header -->
             <div class="pt-4 pl-6 pr-6 flex items-center gap-3">
-                <img
-                    src="../images/fluent-mdl2_back.png"
-                    class="h-5 w-5 cursor-pointer"
-                    @click="router.back()"
-                />
                 <p class="text-[#4A6BB6] font-[700] text-lg">{{ stop.customer }}</p>
             </div>
 
