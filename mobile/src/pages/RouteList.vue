@@ -75,18 +75,20 @@
     </div>
 </template>
 <script setup>
-import { ref, inject, watch, computed } from 'vue'
+import { ref, inject, watch, computed, onMounted, onUnmounted } from 'vue'
 import { createResource, Spinner, FeatherIcon } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import StatusBadge from './StatusBadge.vue'
 
+const POLL_INTERVAL_MS = 3 * 60 * 1000 // 3 minutes
+
 const router = useRouter()
 const employee = inject('employee_id')
 const route = ref(null)
 const loading = ref(true)
-// Default to today
 const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
+let poller = null
 
 const formattedDate = computed(() => {
     const d = dayjs(selectedDate.value)
@@ -122,12 +124,28 @@ function fetchRoute() {
     routeResource.fetch()
 }
 
+function silentRefresh() {
+    // Refresh without resetting the loading state or clearing the route
+    // so the UI doesn't flash while polling
+    routeResource.fetch()
+}
+
 watch(() => employee.name, (name) => {
     if (name) fetchRoute()
 }, { immediate: true })
 
 watch(selectedDate, () => {
     if (employee.name) fetchRoute()
+})
+
+onMounted(() => {
+    poller = setInterval(() => {
+        if (employee.name) silentRefresh()
+    }, POLL_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+    clearInterval(poller)
 })
 
 function changeDate(days) {

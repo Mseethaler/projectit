@@ -64,7 +64,7 @@
     </div>
 </template>
 <script setup>
-import { ref, computed, inject, watch } from 'vue'
+import { ref, computed, inject, watch, onMounted, onUnmounted } from 'vue'
 import { createResource, Spinner, toast } from 'frappe-ui'
 import dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
@@ -78,6 +78,9 @@ const loading = ref(true)
 const actionLoading = ref(false)
 const showError = ref(false)
 const errorMessage = ref('')
+const now = ref(dayjs())
+let ticker = null
+
 const clockStatus = ref({
     clocked_in: false,
     currently_in: false,
@@ -89,9 +92,19 @@ const clockStatus = ref({
 
 const elapsedTime = computed(() => {
     if (!clockStatus.value.checkin_time) return ''
-    const diff = dayjs().diff(dayjs(clockStatus.value.checkin_time))
+    const diff = now.value.diff(dayjs(clockStatus.value.checkin_time))
     const d = dayjs.duration(diff)
-    return `${Math.floor(d.asHours())}h ${d.minutes()}m`
+    return `${Math.floor(d.asHours())}h ${d.minutes()}m ${d.seconds()}s`
+})
+
+onMounted(() => {
+    ticker = setInterval(() => {
+        now.value = dayjs()
+    }, 1000)
+})
+
+onUnmounted(() => {
+    clearInterval(ticker)
 })
 
 const statusResource = createResource({

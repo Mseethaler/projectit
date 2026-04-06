@@ -228,6 +228,9 @@ def route_checkin(employee_id, trip_name, stop_name, latitude, longitude):
     activity_type = frappe.db.get_single_value(
         "Work Time Settings", "regular_time_activity_type"
     )
+    if not activity_type:
+        # Fallback: use first available activity type
+        activity_type = frappe.db.get_value("Activity Type", {}, "name") or ""
     company = frappe.db.get_value("Employee", employee_id, "company")
 
     existing_timesheet = frappe.db.get_value(
