@@ -216,12 +216,12 @@ def get_employee_with_workit(project_name):
 # ---------------------------------------------------------------------------
 
 @frappe.whitelist()
-def get_todays_route(employee_id):
+def get_todays_route(employee_id, selected_date=None):
     """
-    Returns today's Delivery Trip for the given employee (via Driver link).
-    Includes all stops with address, contact phone, and current status.
+    Returns the Delivery Trip for the given employee on the selected date.
+    Defaults to today if no date provided.
     """
-    today = date.today().strftime("%Y-%m-%d")
+    today = selected_date if selected_date else date.today().strftime("%Y-%m-%d")
 
     driver = frappe.db.get_value("Driver", {"employee": employee_id}, "name")
     if not driver:
@@ -272,6 +272,19 @@ def get_todays_route(employee_id):
             mobile = frappe.db.get_value("Contact", stop["contact"], "mobile_no")
             phone = frappe.db.get_value("Contact", stop["contact"], "phone")
             stop["phone"] = mobile or phone or ""
+        elif stop.get("customer"):
+            primary_contact = frappe.db.get_value(
+                "Dynamic Link",
+                {"link_doctype": "Customer", "link_name": stop["customer"], "parenttype": "Contact"},
+                "parent",
+                order_by="creation asc",
+            )
+            if primary_contact:
+                mobile = frappe.db.get_value("Contact", primary_contact, "mobile_no")
+                phone = frappe.db.get_value("Contact", primary_contact, "phone")
+                stop["phone"] = mobile or phone or ""
+            else:
+                stop["phone"] = ""
         else:
             stop["phone"] = ""
 
