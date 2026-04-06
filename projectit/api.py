@@ -269,8 +269,9 @@ def get_todays_route(employee_id):
         stop["address_display"] = stop.get("customer_address") or ""
 
         if stop.get("contact"):
-            phone = frappe.db.get_value("Contact", stop["contact"], "mobile_no")
-            stop["phone"] = phone or ""
+            mobile = frappe.db.get_value("Contact", stop["contact"], "mobile_no")
+            phone = frappe.db.get_value("Contact", stop["contact"], "phone")
+            stop["phone"] = mobile or phone or ""
         else:
             stop["phone"] = ""
 
@@ -457,7 +458,9 @@ def send_route_sms(stop_name, contact_name, template_type, message=None):
     template_type: "omw" | "complete"
     message: if provided by the Vue app, uses this directly instead of template.
     """
-    phone = frappe.db.get_value("Contact", contact_name, "mobile_no")
+    mobile = frappe.db.get_value("Contact", contact_name, "mobile_no")
+    phone = frappe.db.get_value("Contact", contact_name, "phone")
+    phone = mobile or phone
     if not phone:
         frappe.log_error(f"No phone for contact {contact_name}", "RouteIT SMS")
         return {"status": "no_phone"}
